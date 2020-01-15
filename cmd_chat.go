@@ -23,11 +23,12 @@ import (
 	"github.com/urfave/cli"
 )
 
+// CUI
 var chatCommand = cli.Command{
 	Name:      "chat",
 	Category:  "Chat",
 	ArgsUsage: "recipient_pubkey",
-	Usage:     "Use lnd as a p2p messenger application.",
+	Usage:     "Use lnd as a p2p messenger application. From Programize",
 	Action:    actionDecorator(chat),
 	Flags: []cli.Flag{
 		cli.Uint64Flag{
@@ -37,9 +38,11 @@ var chatCommand = cli.Command{
 		},
 	},
 }
+// CUI
 
 var byteOrder = binary.BigEndian
 
+// Library
 const (
 	tlvMsgRecord    = 34349334
 	tlvSigRecord    = 34349337
@@ -50,8 +53,10 @@ const (
 	tlvKeySendRecord = 5482373484
 )
 
+// Library
 type messageState uint8
 
+// Library
 const (
 	statePending messageState = iota
 
@@ -60,6 +65,7 @@ const (
 	stateFailed
 )
 
+// CUI
 type chatLine struct {
 	text      string
 	sender    route.Vertex
@@ -69,16 +75,25 @@ type chatLine struct {
 	timestamp time.Time
 }
 
+
 var (
 	msgLines       []chatLine
 	destination    *route.Vertex
 	runningBalance map[route.Vertex]int64 = make(map[route.Vertex]int64)
 
-	keyToAlias = make(map[route.Vertex]string)
+	keyToAlias = make(map[route.Vertex]string)  // Could be destined for library
 	aliasToKey = make(map[string]route.Vertex)
 
+	// Vertex is a simple alias for the serialization of a compressed Bitcoin public key.
 	self route.Vertex
 )
+
+/* 	
+*	@joostjager is creating two arrays so as to define a double relation between keys and aliases. This way,
+*	We can type /bob instead of /<bob_key>. This, for us will be information saved in our address-book and not in memory.
+*	He parses the Describegraph returned graph and fills those arrays for each node iterated.
+*	Keep an eye on gRPC camelCase transliterations for rpc api fields (pub_key -> PubKey)
+*/
 
 func initAliasMaps(conn *grpc.ClientConn) error {
 	client := lnrpc.NewLightningClient(conn)
@@ -105,6 +120,7 @@ func initAliasMaps(conn *grpc.ClientConn) error {
 			return err
 		}
 
+		// If more than one nodes with the same alias, append an index on each one alice-sdasdf (first 6 digits of pubkey)
 		if aliasCount[alias] > 1 {
 			alias += "-" + node.PubKey[:6]
 		}
@@ -128,17 +144,22 @@ func initAliasMaps(conn *grpc.ClientConn) error {
 	return nil
 }
 
+/*	If /<dest_key> is used the first assignment will be valid
+*	Else if /<alias> is used then the second assignment will be valid
+*/
 func setDest(destStr string) {
 	dest, err := route.NewVertexFromStr(destStr)
 	if err == nil {
 		destination = &dest
 	}
 
+	/*	If alias is present in graph mappings then set its key as destination else leave destination = &dest as before.*/
 	if dest, ok := aliasToKey[destStr]; ok {
 		destination = &dest
 	}
 }
 
+// Enclosing message and sending to destination
 func chat(ctx *cli.Context) error {
 	chatMsgAmt := int64(ctx.Uint64("amt_msat"))
 
@@ -278,7 +299,8 @@ func chat(ctx *cli.Context) error {
 			TimeoutSeconds:    30,
 			DestCustomRecords: customRecords,
 		}
-
+		
+		// go subroutine to update sent message status 
 		go func() {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -321,7 +343,8 @@ func chat(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-
+	
+	// go subroutine to receive messages and update balances
 	go func() {
 		returnErr := func(err error) {
 			g.Update(func(g *gocui.Gui) error {
@@ -425,6 +448,7 @@ func chat(ctx *cli.Context) error {
 	return nil
 }
 
+// Manager function executed after each loop of the main GUI. Purely CUI
 func layout(g *gocui.Gui) error {
 	g.Cursor = true
 
@@ -453,10 +477,12 @@ func layout(g *gocui.Gui) error {
 	return nil
 }
 
+// CUI keybinded to CTRL-C
 func quit(g *gocui.Gui, v *gocui.View) error {
 	return gocui.ErrQuit
 }
 
+// Purely CUI 
 func updateView(g *gocui.Gui) error {
 	const (
 		maxSenderLen = 16

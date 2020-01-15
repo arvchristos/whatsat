@@ -25,6 +25,7 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+// Configuration
 const (
 	defaultDataDir          = "data"
 	defaultChainSubDir      = "chain"
@@ -43,6 +44,9 @@ var (
 	maxMsgRecvSize = grpc.MaxCallRecvMsgSize(1 * 1024 * 1024 * 200)
 )
 
+// \Configuration
+
+// Helper
 func fatal(err error) {
 	fmt.Fprintf(os.Stderr, "[whatsat] %v\n", err)
 	os.Exit(1)
